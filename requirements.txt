@@ -1,0 +1,57 @@
+# ======================================================
+# 🧠 MACHINE LEARNING CODING INTERVIEW PREP ENVIRONMENT
+# ======================================================
+# Python version: 3.10 or 3.11 recommended
+# This environment focuses on debugging, data handling,
+# and PyTorch ML fundamentals (no heavy dependencies).
+# ======================================================
+
+
+# ------------------------------------------------------
+# 🔥 CORE DEEP LEARNING / PYTORCH
+# ------------------------------------------------------
+torch==2.4.1             # Core PyTorch tensor + autograd engine
+torchvision==0.19.1      # For image models, datasets, and transforms
+torchaudio==2.4.1        # Audio utils (included for completeness)
+
+
+# ------------------------------------------------------
+# 🧮 MACHINE LEARNING + DATA PROCESSING
+# ------------------------------------------------------
+numpy==1.26.4            # Numerical operations and tensor interop
+pandas==2.2.3            # Tabular data manipulation (CSV/JSON)
+scikit-learn==1.5.2      # Basic ML utils (splits, preprocessing, metrics)
+pyyaml==6.0.2            # YAML config parsing
+json5==0.9.25            # More forgiving JSON loader for configs
+tqdm==4.66.5             # Lightweight progress bars for loops
+
+
+# ------------------------------------------------------
+# 🧩 DEBUGGING + TESTING UTILITIES
+# ------------------------------------------------------
+debugpy==1.8.5           # Enables VS Code + Codespaces debugger
+pytest==8.3.3            # Unit testing framework for reproducible checks
+ipykernel==6.29.5        # Jupyter kernel (optional, for quick notebook tests)
+
+
+# ------------------------------------------------------
+# 🧰 DEVELOPMENT + CODE QUALITY
+# ------------------------------------------------------
+black==24.10.0           # Code formatter
+isort==5.13.2            # Import sorter
+flake8==7.1.1            # Linter for style and common bugs
+mypy==1.12.1             # Optional static type checker
+
+
+# ------------------------------------------------------
+# 📊 VISUALIZATION (OPTIONAL)
+# ------------------------------------------------------
+matplotlib==3.9.2        # Basic plotting (for inspecting data, tensors)
+
+
+# ------------------------------------------------------
+# 🧹 OPTIONAL UTILITIES (SAFE TO REMOVE IF NEEDED)
+# ------------------------------------------------------
+jupyterlab==4.2.5        # Notebook-style debugging / quick testing env
+
+# End of requirements.txt

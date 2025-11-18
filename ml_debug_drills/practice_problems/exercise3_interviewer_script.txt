@@ -1,0 +1,285 @@
+Here’s a concrete interviewer script your friend can follow using exercise3_bugged.py (the 1-D regression MLP).
+
+I’ll write it so you can literally hand it to them.
+
+⸻
+
+Mock Interview Script – Exercise 3 (Tiny Regressor)
+
+File to use: exercise3_bugged.py
+Goal: Candidate debugs a small MLP regression training loop.
+
+⸻
+
+0. Setup (2–3 min)
+
+Interviewer says:
+
+We’ll do a 45–60 minute mock debugging interview.
+You’ll work in this single file: exercise3_bugged.py.
+The goal is to debug it, not to architect a new model.
+Think out loud as you go, and explain what you’re checking and why.
+
+Make sure they can run:
+
+python exercise3_bugged.py
+
+
+⸻
+
+1. Warm-up: High-level Overview (5 min)
+
+Interviewer prompt:
+
+Before you run anything, please walk me through what this script is trying to do, end to end.
+
+What you’re looking for:
+	•	Recognizes it’s regression, not classification:
+	•	Fit y \approx 2x + 3 with noise.
+	•	Identifies:
+	•	make_data → builds synthetic dataset.
+	•	TinyRegressor → MLP with Linear → ReLU → Linear.
+	•	train:
+	•	build dataset + dataloader
+	•	train loop over epochs/batches
+	•	print loss per epoch.
+
+If they dive into details too fast, push them back up:
+
+I like the details — but first: what is the task type? classification vs regression? What’s the rough target function?
+
+⸻
+
+2. Invariant Pass: Pre-run Checks (10 min)
+
+Interviewer prompt:
+
+Before running the script, what are the core things you would verify by reading the code?
+
+If they need guidance, nudge them:
+
+Think about: data shapes, dtypes, device, model output shape, loss function.
+
+Expected checks (they should mention and/or inspect):
+	1.	Data from make_data
+	•	x shape: (n_samples,) (bug) → should be (n_samples, 1).
+	•	y shape: (n_samples,) → for MSE, (n_samples, 1) is cleaner.
+	•	dtypes: default float64 → typically want float32.
+	2.	Model: TinyRegressor
+	•	Input dimension of first Linear: nn.Linear(1, 16) → so x should have shape (N, 1).
+	3.	DataLoader
+	•	shuffle=False (bug for SGD-ish training).
+	4.	Device
+	•	model = TinyRegressor() (never moved to device).
+	5.	Training loop order
+	•	Missing opt.zero_grad() (bug).
+
+If they miss one, ask directly:
+
+What shape does the first Linear layer expect?
+Does make_data produce inputs in that shape?
+
+⸻
+
+3. First Run & Failure / Behavior (5–10 min)
+
+Interviewer prompt:
+
+Now run the script as-is and tell me what happens. Read the error or the behavior and walk me through your interpretation.
+
+Two possible states depending on env:
+	•	If device mismatch hits:
+	•	model on CPU, xb moved to device → error.
+	•	If CPU only, model forward might still fail due to shape (batch,) into Linear (1, 16).
+
+Ask:
+
+Based on this error/behavior, what’s the first thing you want to inspect in the debugger or with print statements?
+
+Look for:
+	•	Checking xb.shape, yb.shape.
+	•	Noticing mismatch between x shape and model input dimension.
+
+⸻
+
+4. Guided Debugging Path (25–35 min)
+
+You want them to work systematically, not random edits.
+
+4.1 Data shape & dtype
+
+Interviewer prompt:
+
+Let’s start with the data.
+Can you print or inspect the shapes and dtypes of x and y coming out of make_data, and of xb, yb inside the training loop?
+
+Expected work:
+	•	Add prints or breakpoints around:
+
+x, y = make_data()
+print("x:", x.shape, x.dtype)
+print("y:", y.shape, y.dtype)
+
+and inside the loop:
+
+for xb, yb in dl:
+    print("xb:", xb.shape, xb.dtype)
+    print("yb:", yb.shape, yb.dtype)
+    break
+
+
+
+Expected conclusions:
+	•	x is shape (N,) → should be (N, 1):
+	•	Fix with .unsqueeze(1).
+	•	y ideally (N, 1).
+	•	Both are float64 → convert to .float().
+
+Interviewer nudges if stuck:
+
+What shape does nn.Linear(1, 16) expect as input?
+Given that, what shape should x have?
+
+⸻
+
+4.2 Device placement
+
+Interviewer prompt:
+
+Let’s now focus on device consistency.
+What objects need to be on the same device, and what in this code currently violates that?
+
+Expected:
+	•	model must be moved to device:
+
+model = TinyRegressor().to(device)
+
+
+	•	xb and yb should be sent to device in the loop (already present in bugged version, but now meaningful).
+
+Optional prompt:
+
+How would you check the device for the model parameters and for xb/yb?
+
+⸻
+
+4.3 Training loop order
+
+Interviewer prompt:
+
+Walk me through the correct order of operations in a training loop.
+Then compare it to what’s in this file.
+
+Expected answer:
+	•	Correct order:
+
+optimizer.zero_grad()
+preds = model(xb)
+loss = criterion(preds, yb)
+loss.backward()
+optimizer.step()
+
+
+	•	Bugged code is missing zero_grad() entirely.
+
+Ask:
+
+What happens if we never call zero_grad() across iterations?
+
+Expected: gradient accumulation and erratic updates.
+
+⸻
+
+4.4 Optimization hyperparameters
+
+Interviewer prompt:
+
+Take a look at the optimizer and learning rate.
+Does anything stand out that might hurt convergence?
+
+Expected:
+	•	LR = 0.5 is very high for this scale.
+	•	They should suggest reducing it (e.g. 0.01 or 0.05).
+
+Ask:
+
+If we keep everything else correct but use an LR that’s too large, what behavior do you expect from the loss curve?
+
+Expected: diverging or oscillating loss.
+
+⸻
+
+4.5 End-to-end sanity check
+
+Once they’ve applied fixes gradually:
+	•	reshape x/y
+	•	convert to float32
+	•	shuffle
+	•	move model to device
+	•	add zero_grad()
+	•	reduce LR
+
+Interviewer prompt:
+
+Now that you’ve applied several changes, run the script again.
+Talk me through the loss values and what they tell you.
+
+You want:
+	•	Loss generally decreasing over epochs.
+	•	They note that it’s fitting a simple linear-ish function with a small MLP.
+
+Ask:
+
+If the loss plateaued at a high value, what would you check next?
+
+Possible answers you’d accept:
+	•	Check data scale.
+	•	Inspect model capacity (too small?).
+	•	Check for bugs in target generation y = 2x + 3 + noise.
+
+⸻
+
+5. Deeper Concept Questions (5–10 min, if time)
+
+You can close with conceptual checks tied to what they just did.
+
+Q1: Why did we reshape x to (N, 1)?
+
+What’s the relationship between tensor shape and Linear layer weight matrix shape?
+
+Expected:
+Linear(1, 16) expects input (N, 1) → matrix multiply with weight (16, 1) → output (N, 16).
+
+Q2: Why use MSELoss instead of CrossEntropyLoss here?
+
+Expected:
+	•	Regression problem, continuous target.
+	•	CE assumes discrete class indices.
+
+Q3: What’s the difference in debugging classification vs regression?
+
+Expected:
+	•	Classification: check logits shape (N, C), y dtype long, accuracy via argmax(dim=1).
+	•	Regression: outputs and targets are float, shape-matched; metrics are loss, MSE/MAE, not argmax.
+
+⸻
+
+6. Wrap-up
+
+Interviewer prompt:
+
+To wrap up, summarize your debugging approach today.
+If you had 5 more minutes, what would you check next?
+
+You’re looking for them to restate a pattern like:
+	•	Check data (shape, dtype, device).
+	•	Check model I/O shapes.
+	•	Run one batch manually.
+	•	Check training loop order.
+	•	Tweak hyperparameters after correctness is established.
+
+⸻
+
+If you want, I can:
+	•	Turn this into a PDF-ready interviewer guide,
+	•	Or add a scorecard / rubric (signal: strong / medium / weak) for each section.
