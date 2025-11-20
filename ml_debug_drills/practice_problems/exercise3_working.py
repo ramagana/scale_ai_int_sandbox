@@ -28,7 +28,7 @@ def make_data(n_samples: int = 256):
     torch.manual_seed(0)
     x = torch.linspace(-1, 1, n_samples)          
     noise = 0.2 * torch.randn(n_samples)
-    y = 2 * x + 3 + noise                           # y ~ 2x + 3
+    y = 2 * x + 3 + noise                           
     
     return x, y
 
@@ -38,12 +38,18 @@ def train(num_epochs: int = 10, batch_size: int = 32):
     print("Using device:", device)
 
     x, y = make_data()
+    x = x.reshape(-1,1).float()
+    y = y.reshape(-1,1).float()
     ds = TensorDataset(x, y)                        
-    dl = DataLoader(ds, batch_size=batch_size, shuffle=False) 
+    dl = DataLoader(ds, batch_size=batch_size, shuffle=True)
 
-    model = TinyRegressor()                       
+    model = TinyRegressor().to(device)                       
     crit = nn.MSELoss()
-    opt = torch.optim.SGD(model.parameters(), lr=0.5) 
+    opt = torch.optim.SGD(model.parameters(), lr=0.05) 
+
+    xb0, ybo = next(iter(dl))
+    print(f"Sanity batch xb0: shape={xb0.shape}, dtype={xb0.dtype}, device={xb0.device}")
+    print(f"Sanity batch yb0: shape={ybo.shape}, dtype={ybo.dtype}, device={ybo.device}")
 
     for epoch in range(num_epochs):
         running_loss = 0.0
@@ -52,7 +58,7 @@ def train(num_epochs: int = 10, batch_size: int = 32):
             xb = xb.to(device)
             yb = yb.to(device)
 
-
+            opt.zero_grad()
             preds = model(xb)                      
             loss = crit(preds, yb)
 
@@ -65,4 +71,4 @@ def train(num_epochs: int = 10, batch_size: int = 32):
 
 
 if __name__ == "__main__":
-    train()
+    train(num_epochs=10, batch_size=32) 
